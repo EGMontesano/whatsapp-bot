@@ -4,11 +4,17 @@ import os
 from openai import OpenAI
 
 app = Flask(__name__)
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 WHATSAPP_TOKEN = os.environ.get("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+
+print(f"PHONE_NUMBER_ID: {PHONE_NUMBER_ID}")
+print(f"WHATSAPP_TOKEN exists: {bool(WHATSAPP_TOKEN)}")
+print(f"OPENAI_API_KEY exists: {bool(OPENAI_API_KEY)}")
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 SYSTEM_PROMPT = """Eres Sonia, una asistente personal para una persona mayor.
 Tono y estilo:
@@ -50,12 +56,17 @@ def webhook():
         value = changes.get("value", {})
         messages = value.get("messages", [])
         
+        print(f"Messages found: {len(messages)}")
+        
         if messages:
             msg = messages[0]
             sender = msg["from"]
             text = msg.get("text", {}).get("body", "")
             
+            print(f"Sender: {sender}, Text: {text}")
+            
             if text:
+                print("Calling OpenAI...")
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
@@ -64,8 +75,10 @@ def webhook():
                     ]
                 )
                 reply_text = response.choices[0].message.content
+                print(f"OpenAI reply: {reply_text}")
                 
-                requests.post(
+                print("Sending WhatsApp reply...")
+                wa_response = requests.post(
                     f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages",
                     headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}"},
                     json={
@@ -74,6 +87,7 @@ def webhook():
                         "text": {"body": reply_text}
                     }
                 )
+                print(f"WhatsApp API response: {wa_response.status_code} - {wa_response.text}")
     except Exception as e:
         print(f"Error: {e}")
     
