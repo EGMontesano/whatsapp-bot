@@ -19,26 +19,24 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 SYSTEM_PROMPT = """Eres Sonia, una asistente personal para una persona mayor.
 Tono y estilo:
-- Educada, amable y clara, con un punto de alegría tranquila.
+- Educada, amable y clara, con un punto de alegria tranquila.
 - No haces chistes ni bromas salvo que te los pidan.
-- Respondes en español por defecto. Si el usuario pide otro idioma, te adaptas.
-- Respuestas concisas y precisas. Si el usuario quiere más detalle, amplías.
+- Respondes en espanol por defecto. Si el usuario pide otro idioma, te adaptas.
+- Respuestas concisas y precisas. Si el usuario quiere mas detalle, amplias.
 Comportamiento:
-- Actúas como asistente: ayudas a resolver tareas, dudas y organización diaria.
-- Si falta información para responder bien, haces 1 o 2 preguntas concretas.
+- Actuas como asistente: ayudas a resolver tareas, dudas y organizacion diaria.
+- Si falta informacion para responder bien, haces 1 o 2 preguntas concretas.
 - No inventas datos. Si no sabes algo, lo dices y propones una alternativa.
-Primera interacción:
-- Si es el primer mensaje de la conversación, saluda y preséntate: "Hola, soy Sonia, tu asistente personal. Estoy aquí para ayudarte con lo que necesites."
-Seguridad y límites:
+Primera interaccion:
+- Si es el primer mensaje de la conversacion, saluda y presentate: Hola, soy Sonia, tu asistente personal. Estoy aqui para ayudarte con lo que necesites.
+Seguridad y limites:
 - Nunca usas palabrotas ni lenguaje ofensivo.
-- Rechazas solicitudes sexuales, explícitas, humillantes, violentas, ilegales o peligrosas.
-- Si te piden ese tipo de cosas, respondes con una negativa breve y ofreces ayuda con algo seguro y útil.
-
+- Rechazas solicitudes sexuales, explicitas, humillantes, violentas, ilegales o peligrosas.
+- Si te piden ese tipo de cosas, respondes con una negativa breve y ofreces ayuda con algo seguro y util.
+- Si detectas que el usuario puede estar en riesgo, respondes con calma, recomiendas pedir ayuda inmediata a una persona de confianza o a servicios de emergencia locales, y ofreces apoyo con pasos seguros."""
 
 
 def download_whatsapp_media(media_id):
-    """Download media from WhatsApp and return base64 encoded data"""
-    # First, get the media URL
     url_response = requests.get(
         f"https://graph.facebook.com/v18.0/{media_id}",
         headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}"}
@@ -49,7 +47,6 @@ def download_whatsapp_media(media_id):
         print(f"Could not get media URL: {url_response.text}")
         return None
     
-    # Download the actual media
     media_response = requests.get(
         media_url,
         headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}"}
@@ -63,7 +60,6 @@ def download_whatsapp_media(media_id):
 
 
 def send_whatsapp_message(to, text):
-    """Send a WhatsApp text message"""
     response = requests.post(
         f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages",
         headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}"},
@@ -109,7 +105,6 @@ def webhook():
             
             print(f"Sender: {sender}, Type: {msg_type}")
             
-            # Build the message content for OpenAI
             user_content = []
             
             if msg_type == "text":
@@ -125,7 +120,6 @@ def webhook():
                 
                 print(f"Image received, media_id: {media_id}, caption: {caption}")
                 
-                # Download and encode the image
                 image_base64 = download_whatsapp_media(media_id)
                 
                 if image_base64:
@@ -138,14 +132,13 @@ def webhook():
                     if caption:
                         user_content.append({"type": "text", "text": caption})
                     else:
-                        user_content.append({"type": "text", "text": "¿Qué ves en esta imagen?"})
+                        user_content.append({"type": "text", "text": "Que ves en esta imagen?"})
                 else:
-                    user_content.append({"type": "text", "text": "El usuario envió una imagen pero no pude descargarla."})
+                    user_content.append({"type": "text", "text": "El usuario envio una imagen pero no pude descargarla."})
             
             else:
-                # Unsupported message type
                 print(f"Unsupported message type: {msg_type}")
-                send_whatsapp_message(sender, "Lo siento, solo puedo procesar mensajes de texto e imágenes por ahora.")
+                send_whatsapp_message(sender, "Lo siento, solo puedo procesar mensajes de texto e imagenes por ahora.")
                 return "OK", 200
             
             if user_content:
