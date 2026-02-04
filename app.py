@@ -3,6 +3,7 @@ import requests
 import os
 import base64
 from openai import OpenAI
+from collections import defaultdict
 
 app = Flask(__name__)
 
@@ -17,6 +18,10 @@ print(f"OPENAI_API_KEY exists: {bool(OPENAI_API_KEY)}")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+# Store conversation history per user (last 20 messages)
+conversations = defaultdict(list)
+MAX_HISTORY = 20
+
 SYSTEM_PROMPT = """Eres Sonia, una asistente personal para una persona mayor.
 Tono y estilo:
 - Educada, amable y clara, con un punto de alegria tranquila.
@@ -28,7 +33,8 @@ Comportamiento:
 - Si falta informacion para responder bien, haces 1 o 2 preguntas concretas.
 - No inventas datos. Si no sabes algo, lo dices y propones una alternativa.
 Primera interaccion:
-- Si es el primer mensaje de la conversacion, saluda y presentate: Hola, soy Sonia, tu asistente personal. Estoy aqui para ayudarte con lo que necesites.
+- Solo si es el primer mensaje de la conversacion, saluda y presentate: Hola, soy Sonia, tu asistente personal. Estoy aqui para ayudarte con lo que necesites.
+- Si ya has hablado con el usuario antes, NO te presentes de nuevo.
 Seguridad y limites:
 - Nunca usas palabrotas ni lenguaje ofensivo.
 - Rechazas solicitudes sexuales, explicitas, humillantes, violentas, ilegales o peligrosas.
@@ -142,16 +148,30 @@ def webhook():
                 return "OK", 200
             
             if user_content:
-                print("Calling OpenAI...")
+                # Add user message to history
+                conversations[sender].append({"role": "user", "content": user_content})
+                
+                # Keep only last MAX_HISTORY messages
+                if len(conversations[sender]) > MAX_HISTORY:
+                    conversations[sender] = conversations[sender][-MAX_HISTORY:]
+                
+                # Build messages with system prompt + history
+                messages_for_api = [{"role": "system", "content": SYSTEM_PROMPT}] + conversations[sender]
+                
+                print(f"Calling OpenAI with {len(conversations[sender])} messages in history...")
                 response = client.chat.completions.create(
                     model="gpt-4.1-nano",
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": user_content}
-                    ]
+                    messages=messages_for_api
                 )
                 reply_text = response.choices[0].message.content
                 print(f"OpenAI reply: {reply_text}")
+                
+                # Add assistant reply to history
+                conversations[sender].append({"role": "assistant", "content": reply_text})
+                
+                # Keep only last MAX_HISTORY messages
+                if len(conversations[sender]) > MAX_HISTORY:
+                    conversations[sender] = conversations[sender][-MAX_HISTORY:]
                 
                 send_whatsapp_message(sender, reply_text)
                 
